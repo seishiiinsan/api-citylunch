@@ -1,20 +1,34 @@
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use utoipa::ToSchema;
 
 use crate::{auth::jwt::generate_token, errors::AppError, routes::AppState};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginDto {
+    #[schema(example = "jean.dupont@citylunch.fr")]
     pub email: String,
+    #[schema(example = "motDePasseRecu")]
     pub mot_de_passe: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
+    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...")]
     pub token: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/login",
+    tag = "auth",
+    request_body = LoginDto,
+    responses(
+        (status = 200, description = "Connexion réussie — retourne le token JWT", body = LoginResponse),
+        (status = 401, description = "Email ou mot de passe incorrect", body = ErrorResponse),
+    )
+)]
 pub async fn login(
     State(state): State<AppState>,
     Json(dto): Json<LoginDto>,

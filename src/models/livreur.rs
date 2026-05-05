@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -21,7 +22,7 @@ pub struct Livreur {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone, ToSchema)]
 pub struct LivreurResponse {
     pub id: Uuid,
     pub nom: String,
@@ -35,7 +36,7 @@ pub struct LivreurResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateLivreurDto {
     #[validate(length(min = 1, max = 255))]
     pub nom: String,
@@ -45,7 +46,7 @@ pub struct CreateLivreurDto {
     pub email: String,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateLivreurDto {
     #[validate(length(min = 1, max = 255))]
     pub nom: Option<String>,
