@@ -322,6 +322,15 @@ Ouvrir `citylunch.http` dans VS Code → cliquer **Send Request** au-dessus de c
 
 La spec OpenAPI complète est disponible dans `openapi.yaml`.
 
+Une **interface Swagger UI interactive** est accessible directement depuis l'API en cours d'exécution :
+
+| URL | Description |
+|---|---|
+| `http://localhost:3000/swagger-ui` | Interface interactive — tester les routes depuis le navigateur |
+| `http://localhost:3000/api-docs/openapi.json` | Spec OpenAPI 3.0 au format JSON |
+
+> La Swagger UI permet de tester toutes les routes sans outil externe. Pour les routes protégées, cliquer **Authorize** en haut à droite et saisir le token JWT obtenu via `POST /api/v1/auth/login`.
+
 ---
 
 ## Structure du projet
