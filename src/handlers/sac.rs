@@ -3,7 +3,6 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use rust_decimal::Decimal;
 use sqlx::Row;
 use uuid::Uuid;
 use validator::Validate;

@@ -11,7 +11,7 @@ use validator::Validate;
 
 use crate::{
     errors::AppError,
-    models::produit::{CreateProduitDto, Produit, ProduitRow, TypeProduit, UpdateProduitDto},
+    models::produit::{CreateProduitDto, Produit, ProduitRow, UpdateProduitDto},
     routes::AppState,
 };
 

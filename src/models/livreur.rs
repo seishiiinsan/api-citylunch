@@ -5,6 +5,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+#[allow(dead_code)]
 pub struct Livreur {
     pub id: Uuid,
     pub nom: String,
