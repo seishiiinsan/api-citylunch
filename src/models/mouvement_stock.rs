@@ -22,6 +22,7 @@ impl TypeMouvement {
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
+#[allow(dead_code)]
 pub struct MouvementStock {
     pub id: Uuid,
     pub livreur_id: Uuid,

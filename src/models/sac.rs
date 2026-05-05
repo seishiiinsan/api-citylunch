@@ -6,6 +6,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
+#[allow(dead_code)]
 pub struct Sac {
     pub id: Uuid,
     pub livreur_id: Uuid,
