@@ -2,10 +2,11 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum TypeProduit {
     Plat,
@@ -41,11 +42,12 @@ pub struct ProduitRow {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct Produit {
     pub id: Uuid,
     pub nom: String,
     pub description: Option<String>,
+    #[schema(value_type = f64, example = 12.5)]
     pub prix: Decimal,
     pub type_produit: TypeProduit,
     pub disponible: bool,
@@ -69,18 +71,21 @@ impl From<ProduitRow> for Produit {
     }
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateProduitDto {
     #[validate(length(min = 1, max = 255, message = "Le nom doit faire entre 1 et 255 caractères"))]
+    #[schema(example = "Poulet rôti aux herbes")]
     pub nom: String,
     #[validate(length(max = 2000, message = "La description ne peut pas dépasser 2000 caractères"))]
     pub description: Option<String>,
+    #[schema(example = 12.5)]
     pub prix: f64,
     pub type_produit: TypeProduit,
+    #[schema(example = true)]
     pub disponible: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateProduitDto {
     #[validate(length(min = 1, max = 255, message = "Le nom doit faire entre 1 et 255 caractères"))]
     pub nom: Option<String>,

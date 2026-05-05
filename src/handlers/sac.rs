@@ -3,8 +3,6 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use sqlx::Row;
 use uuid::Uuid;
 use validator::Validate;
@@ -14,8 +12,8 @@ use crate::{
     domain,
     errors::AppError,
     models::{
-        mouvement_stock::TypeMouvement,
-        sac::{AddProduitDto, RetraitProduitDto, SacItemResponse, SacResponse},
+        mouvement_stock::{MouvementResponse, MouvementsListResponse, TypeMouvement},
+        sac::{AddProduitDto, FinServiceResponse, RetraitProduitDto, SacItemResponse, SacResponse},
     },
     routes::AppState,
 };
@@ -26,6 +24,17 @@ fn valider_retrait(quantite_sac: i32, quantite_retrait: i32) -> Result<(), AppEr
         .map_err(AppError::BadRequest)
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/sac",
+    tag = "sac",
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "Contenu du sac du livreur authentifié", body = SacResponse),
+        (status = 401, description = "Non authentifié", body = ErrorResponse),
+        (status = 404, description = "Sac introuvable", body = ErrorResponse),
+    )
+)]
 pub async fn get_sac(
     State(state): State<AppState>,
     auth: AuthenticatedLivreur,
@@ -84,6 +93,19 @@ pub async fn get_sac(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/sac/produits",
+    tag = "sac",
+    security(("bearerAuth" = [])),
+    request_body = AddProduitDto,
+    responses(
+        (status = 201, description = "Produit ajouté au sac (quantité incrémentée si déjà présent)"),
+        (status = 400, description = "Produit indisponible ou quantité invalide", body = ErrorResponse),
+        (status = 401, description = "Non authentifié", body = ErrorResponse),
+        (status = 404, description = "Produit introuvable", body = ErrorResponse),
+    )
+)]
 pub async fn add_produit_sac(
     State(state): State<AppState>,
     auth: AuthenticatedLivreur,
@@ -142,6 +164,20 @@ pub async fn add_produit_sac(
     Ok(StatusCode::CREATED)
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/sac/produits/{produit_id}",
+    tag = "sac",
+    security(("bearerAuth" = [])),
+    params(("produit_id" = Uuid, Path, description = "Identifiant du produit à retirer")),
+    request_body = RetraitProduitDto,
+    responses(
+        (status = 204, description = "Produit retiré du sac"),
+        (status = 400, description = "Quantité de retrait supérieure au stock", body = ErrorResponse),
+        (status = 401, description = "Non authentifié", body = ErrorResponse),
+        (status = 404, description = "Produit non trouvé dans le sac", body = ErrorResponse),
+    )
+)]
 pub async fn remove_produit_sac(
     State(state): State<AppState>,
     auth: AuthenticatedLivreur,
@@ -207,6 +243,16 @@ pub async fn remove_produit_sac(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/livreurs/{id}/sac",
+    tag = "livreurs",
+    params(("id" = Uuid, Path, description = "Identifiant du livreur")),
+    responses(
+        (status = 200, description = "Sac du livreur (vue gérant)", body = SacResponse),
+        (status = 404, description = "Livreur introuvable", body = ErrorResponse),
+    )
+)]
 /// GET /livreurs/:id/sac — consultation du sac d'un livreur (accessible sans JWT, pour le gérant)
 pub async fn get_sac_by_livreur(
     State(state): State<AppState>,
@@ -257,11 +303,22 @@ pub async fn get_sac_by_livreur(
     Ok(Json(SacResponse { sac_id, livreur_id, items, total_items }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/sac/fin-service",
+    tag = "sac",
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "Fin de service enregistrée — sac vidé", body = FinServiceResponse),
+        (status = 401, description = "Non authentifié", body = ErrorResponse),
+        (status = 404, description = "Sac introuvable", body = ErrorResponse),
+    )
+)]
 /// POST /sac/fin-service — retour des produits non livrés en fin de service
 pub async fn fin_service(
     State(state): State<AppState>,
     auth: AuthenticatedLivreur,
-) -> Result<Json<serde_json::Value>, AppError> {
+) -> Result<Json<FinServiceResponse>, AppError> {
     let sac_row = sqlx::query("SELECT id FROM sacs WHERE livreur_id = $1")
         .bind(auth.livreur_id)
         .fetch_optional(&state.pool)
@@ -300,17 +357,27 @@ pub async fn fin_service(
         .execute(&state.pool)
         .await?;
 
-    Ok(Json(serde_json::json!({
-        "message": "Fin de service enregistrée",
-        "produits_retournes": retours
-    })))
+    Ok(Json(FinServiceResponse {
+        message: "Fin de service enregistrée".to_string(),
+        produits_retournes: retours,
+    }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/livreurs/{id}/mouvements",
+    tag = "livreurs",
+    params(("id" = Uuid, Path, description = "Identifiant du livreur")),
+    responses(
+        (status = 200, description = "Historique des mouvements de stock", body = MouvementsListResponse),
+        (status = 404, description = "Livreur introuvable", body = ErrorResponse),
+    )
+)]
 /// GET /livreurs/:id/mouvements — historique des mouvements d'un livreur
 pub async fn get_mouvements(
     State(state): State<AppState>,
     Path(livreur_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, AppError> {
+) -> Result<Json<MouvementsListResponse>, AppError> {
     let exists = sqlx::query("SELECT id FROM livreurs WHERE id = $1")
         .bind(livreur_id)
         .fetch_optional(&state.pool)
@@ -331,21 +398,21 @@ pub async fn get_mouvements(
     .fetch_all(&state.pool)
     .await?;
 
-    let mouvements: Vec<serde_json::Value> = rows
+    let mouvements: Result<Vec<MouvementResponse>, AppError> = rows
         .iter()
-        .map(|row| {
-            serde_json::json!({
-                "id": row.try_get::<Uuid, _>("id").ok(),
-                "produit_id": row.try_get::<Uuid, _>("produit_id").ok(),
-                "produit_nom": row.try_get::<String, _>("produit_nom").ok(),
-                "quantite": row.try_get::<i32, _>("quantite").ok(),
-                "type_mouvement": row.try_get::<String, _>("type_mouvement").ok(),
-                "created_at": row.try_get::<DateTime<Utc>, _>("created_at").ok(),
+        .map(|row| -> Result<MouvementResponse, AppError> {
+            Ok(MouvementResponse {
+                id: row.try_get("id").map_err(|_| AppError::InternalServerError)?,
+                produit_id: row.try_get("produit_id").map_err(|_| AppError::InternalServerError)?,
+                produit_nom: row.try_get("produit_nom").map_err(|_| AppError::InternalServerError)?,
+                quantite: row.try_get("quantite").map_err(|_| AppError::InternalServerError)?,
+                type_mouvement: row.try_get("type_mouvement").map_err(|_| AppError::InternalServerError)?,
+                created_at: row.try_get("created_at").map_err(|_| AppError::InternalServerError)?,
             })
         })
         .collect();
 
-    Ok(Json(serde_json::json!({ "mouvements": mouvements })))
+    Ok(Json(MouvementsListResponse { mouvements: mouvements? }))
 }
 
 // Les tests unitaires sont dans tests/business_rules.rs

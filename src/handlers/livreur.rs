@@ -58,6 +58,14 @@ fn row_to_livreur(row: &sqlx::postgres::PgRow) -> Result<LivreurResponse, AppErr
     })
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/livreurs",
+    tag = "livreurs",
+    responses(
+        (status = 200, description = "Liste de tous les livreurs", body = Vec<LivreurResponse>),
+    )
+)]
 pub async fn list_livreurs(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<LivreurResponse>>, AppError> {
@@ -69,6 +77,16 @@ pub async fn list_livreurs(
     Ok(Json(livreurs?))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/livreurs/{id}",
+    tag = "livreurs",
+    params(("id" = Uuid, Path, description = "Identifiant du livreur")),
+    responses(
+        (status = 200, description = "Livreur trouvé", body = LivreurResponse),
+        (status = 404, description = "Livreur introuvable", body = ErrorResponse),
+    )
+)]
 pub async fn get_livreur(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -82,6 +100,17 @@ pub async fn get_livreur(
     Ok(Json(row_to_livreur(&row)?))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/livreurs",
+    tag = "livreurs",
+    request_body = CreateLivreurDto,
+    responses(
+        (status = 201, description = "Livreur créé — credentials envoyés par email", body = LivreurResponse),
+        (status = 400, description = "Données invalides", body = ErrorResponse),
+        (status = 409, description = "Email déjà utilisé", body = ErrorResponse),
+    )
+)]
 pub async fn create_livreur(
     State(state): State<AppState>,
     Json(dto): Json<CreateLivreurDto>,
@@ -131,6 +160,19 @@ pub async fn create_livreur(
     Ok((StatusCode::CREATED, Json(livreur)))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/livreurs/{id}",
+    tag = "livreurs",
+    params(("id" = Uuid, Path, description = "Identifiant du livreur")),
+    request_body = UpdateLivreurDto,
+    responses(
+        (status = 200, description = "Livreur mis à jour", body = LivreurResponse),
+        (status = 400, description = "Données invalides", body = ErrorResponse),
+        (status = 404, description = "Livreur introuvable", body = ErrorResponse),
+        (status = 409, description = "Email déjà utilisé", body = ErrorResponse),
+    )
+)]
 pub async fn update_livreur(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -192,6 +234,16 @@ pub async fn update_livreur(
     Ok(Json(row_to_livreur(&row)?))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/livreurs/{id}",
+    tag = "livreurs",
+    params(("id" = Uuid, Path, description = "Identifiant du livreur")),
+    responses(
+        (status = 204, description = "Livreur supprimé"),
+        (status = 404, description = "Livreur introuvable", body = ErrorResponse),
+    )
+)]
 pub async fn delete_livreur(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,

@@ -3,8 +3,17 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use serde::Serialize;
 use serde_json::json;
 use thiserror::Error;
+use utoipa::ToSchema;
+
+/// Schéma de réponse d'erreur utilisé dans la documentation OpenAPI.
+#[derive(Serialize, ToSchema)]
+pub struct ErrorResponse {
+    #[schema(example = "Resource not found")]
+    pub error: String,
+}
 
 #[derive(Error, Debug)]
 #[allow(dead_code)]

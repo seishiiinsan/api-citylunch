@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TypeMouvement {
     Chargement,
@@ -30,4 +31,19 @@ pub struct MouvementStock {
     pub quantite: i32,
     pub type_mouvement: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MouvementResponse {
+    pub id: Uuid,
+    pub produit_id: Uuid,
+    pub produit_nom: String,
+    pub quantite: i32,
+    pub type_mouvement: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MouvementsListResponse {
+    pub mouvements: Vec<MouvementResponse>,
 }

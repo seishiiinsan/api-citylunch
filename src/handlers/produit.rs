@@ -39,6 +39,14 @@ fn row_to_produit(row: &sqlx::postgres::PgRow) -> Result<Produit, AppError> {
     Ok(row.into())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/produits",
+    tag = "produits",
+    responses(
+        (status = 200, description = "Liste de tous les produits", body = Vec<Produit>),
+    )
+)]
 pub async fn list_produits(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Produit>>, AppError> {
@@ -52,6 +60,16 @@ pub async fn list_produits(
     Ok(Json(produits?))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/produits/{id}",
+    tag = "produits",
+    params(("id" = Uuid, Path, description = "Identifiant du produit")),
+    responses(
+        (status = 200, description = "Produit trouvé", body = Produit),
+        (status = 404, description = "Produit introuvable", body = ErrorResponse),
+    )
+)]
 pub async fn get_produit(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -67,6 +85,16 @@ pub async fn get_produit(
     Ok(Json(row_to_produit(&row)?))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/produits",
+    tag = "produits",
+    request_body = CreateProduitDto,
+    responses(
+        (status = 201, description = "Produit créé", body = Produit),
+        (status = 400, description = "Données invalides", body = ErrorResponse),
+    )
+)]
 pub async fn create_produit(
     State(state): State<AppState>,
     Json(dto): Json<CreateProduitDto>,
@@ -97,6 +125,18 @@ pub async fn create_produit(
     Ok((StatusCode::CREATED, Json(row_to_produit(&row)?)))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/produits/{id}",
+    tag = "produits",
+    params(("id" = Uuid, Path, description = "Identifiant du produit")),
+    request_body = UpdateProduitDto,
+    responses(
+        (status = 200, description = "Produit mis à jour", body = Produit),
+        (status = 400, description = "Données invalides", body = ErrorResponse),
+        (status = 404, description = "Produit introuvable", body = ErrorResponse),
+    )
+)]
 pub async fn update_produit(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -148,6 +188,17 @@ pub async fn update_produit(
     Ok(Json(row_to_produit(&row)?))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/produits/{id}",
+    tag = "produits",
+    params(("id" = Uuid, Path, description = "Identifiant du produit")),
+    responses(
+        (status = 204, description = "Produit supprimé"),
+        (status = 404, description = "Produit introuvable", body = ErrorResponse),
+        (status = 409, description = "Produit présent dans un sac", body = ErrorResponse),
+    )
+)]
 pub async fn delete_produit(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
