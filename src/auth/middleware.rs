@@ -3,6 +3,7 @@ use axum::{
     extract::FromRequestParts,
     http::request::Parts,
 };
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{auth::jwt::validate_token, errors::AppError, routes::AppState};
@@ -34,6 +35,19 @@ impl FromRequestParts<AppState> for AuthenticatedLivreur {
 
         let livreur_id = Uuid::parse_str(&token_data.claims.sub)
             .map_err(|_| AppError::Unauthorized)?;
+
+        // Vérifier que le livreur existe toujours en base
+        // (token révoqué implicitement si le compte est supprimé)
+        let exists = sqlx::query("SELECT id FROM livreurs WHERE id = $1")
+            .bind(livreur_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        if exists.is_none() {
+            tracing::warn!(livreur_id = %livreur_id, "token valide mais livreur supprimé en base");
+            return Err(AppError::Unauthorized);
+        }
 
         Ok(AuthenticatedLivreur { livreur_id })
     }

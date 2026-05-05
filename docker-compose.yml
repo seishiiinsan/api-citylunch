@@ -10,11 +10,11 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
 
-  mailhog:
-    image: mailhog/mailhog
+  mailpit:
+    image: axllent/mailpit
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1025:1025"   # SMTP
+      - "8026:8025"   # UI web (8026 côté hôte)
 
 volumes:
   pg_data:

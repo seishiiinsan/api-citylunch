@@ -29,6 +29,11 @@ pub async fn send_credentials_email(
         ))
         .map_err(|_| AppError::InternalServerError)?;
 
+    // En développement (Mailpit sur port 1025) : connexion non chiffrée acceptable.
+    // En production : remplacer par starttls_relay() ou tls_relay() avec
+    // des credentials SMTP et un serveur qui supporte TLS.
+    // `builder_dangerous` est nommé ainsi intentionnellement par la bibliothèque
+    // pour signaler l'absence de vérification TLS — à ne pas utiliser en production.
     let mailer: AsyncSmtpTransport<Tokio1Executor> =
         AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.smtp_host)
             .port(config.smtp_port)

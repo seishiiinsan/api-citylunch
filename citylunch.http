@@ -1,0 +1,446 @@
+# CityLunch API — Tests des routes
+# Extension VS Code requise : REST Client (humao.rest-client)
+#
+# Jeu de données en base :
+#   Produits : Poulet rôti, Saumon gravlax, Risotto champignons, Tarte aux pommes, Mousse au chocolat
+#   Livreurs : Jean Dupont, Sophie Martin, Lucas Bernard
+#   Sacs     : Jean (poulet x3 + tarte x2 + mousse x1)
+#              Sophie (saumon x2 + mousse x4)
+#              Lucas  (risotto x5 + tarte x3 + poulet x2)
+
+@base = http://localhost:3000/api/v1
+
+# ── Livreurs ─────────────────────────────────────────
+@id_jean   = e7039e99-1503-4579-be9e-7b2eaada8d6f
+@id_sophie = d048e68e-e570-46fe-967a-d3dbfbc3d845
+@id_lucas  = a7a95388-335e-4f4a-a311-eb49fae96f52
+
+# ── Produits ─────────────────────────────────────────
+@id_poulet   = d6d74be8-7416-4c36-81a6-165cbd03091a
+@id_saumon   = 21ec2169-ec8d-436e-897c-e5cc0de192d4
+@id_risotto  = 060395be-f75a-4ee5-946e-bf3830bdce1d
+@id_tarte    = 97fcdc32-14c0-40f9-9dc1-b22e15845e11
+@id_mousse   = beeac9bc-f924-49f8-b482-4061ee020414
+
+# ── Tokens JWT (valables 24h depuis la génération du jeu de données) ─────────
+@token_jean   = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlNzAzOWU5OS0xNTAzLTQ1NzktYmU5ZS03YjJlYWFkYThkNmYiLCJleHAiOjE3NzgwNzI0MDYsImlhdCI6MTc3Nzk4NjAwNn0.dYHJ-An7U5belps0oTQ3rPJRHungxWRUtxOZenqmw8g
+@token_sophie = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkMDQ4ZTY4ZS1lNTcwLTQ2ZmUtOTY3YS1kM2RiZmJjM2Q4NDUiLCJleHAiOjE3NzgwNzI0MDcsImlhdCI6MTc3Nzk4NjAwN30.h_VcyNgY1yqVhItSpEPUYI-ED6pwUcod3POSh4BOcis
+@token_lucas  = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhN2E5NTM4OC0zMzVlLTRmNGEtYTMxMS1lYjQ5ZmFlOTZmNTIiLCJleHAiOjE3NzgwNzI0MDgsImlhdCI6MTc3Nzk4NjAwOH0.W2tDrEZsqA2azRexeISW477Pi7mvC8FWTnu5E96f_70
+
+
+### ─────────────────────────────────────────────
+### PRODUITS
+### ─────────────────────────────────────────────
+
+### GET — Lister tous les produits (5 attendus)
+GET {{base}}/produits
+Accept: application/json
+
+###
+
+### GET — Consulter le Poulet rôti
+GET {{base}}/produits/{{id_poulet}}
+Accept: application/json
+
+###
+
+### GET — Consulter la Mousse au chocolat
+GET {{base}}/produits/{{id_mousse}}
+Accept: application/json
+
+###
+
+### GET — 404 : produit inexistant
+GET {{base}}/produits/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+### POST — Créer un nouveau plat
+POST {{base}}/produits
+Content-Type: application/json
+
+{
+  "nom": "Tajine d'agneau",
+  "description": "Agneau confit, pruneaux, amandes grillées",
+  "prix": 15.00,
+  "type_produit": "plat"
+}
+
+###
+
+### POST — Créer un dessert indisponible
+POST {{base}}/produits
+Content-Type: application/json
+
+{
+  "nom": "Fondant au chocolat blanc",
+  "description": "Cœur coulant vanille Bourbon",
+  "prix": 6.00,
+  "type_produit": "dessert",
+  "disponible": false
+}
+
+###
+
+### POST — 400 : prix négatif
+POST {{base}}/produits
+Content-Type: application/json
+
+{
+  "nom": "Produit invalide",
+  "prix": -5.00,
+  "type_produit": "plat"
+}
+
+###
+
+### POST — 400 : nom vide
+POST {{base}}/produits
+Content-Type: application/json
+
+{
+  "nom": "",
+  "prix": 10.00,
+  "type_produit": "dessert"
+}
+
+###
+
+### PUT — Modifier le prix du Saumon gravlax
+PUT {{base}}/produits/{{id_saumon}}
+Content-Type: application/json
+
+{
+  "prix": 15.50,
+  "description": "Saumon mariné aneth, citron, crème fraîche — nouvelle recette"
+}
+
+###
+
+### PUT — Passer le Risotto en indisponible
+PUT {{base}}/produits/{{id_risotto}}
+Content-Type: application/json
+
+{
+  "disponible": false
+}
+
+###
+
+### DELETE — 409 : impossible (Poulet est dans le sac de Jean et Lucas)
+DELETE {{base}}/produits/{{id_poulet}}
+
+###
+
+### DELETE — OK : supprimer le Saumon (présent dans aucun sac au moment où vous retirez Sophie)
+# ⚠ Exécuter après DELETE /sac/produits du saumon pour Sophie (section SAC ci-dessous)
+DELETE {{base}}/produits/{{id_saumon}}
+
+###
+
+
+### ─────────────────────────────────────────────
+### LIVREURS
+### ─────────────────────────────────────────────
+
+### GET — Lister tous les livreurs (3 attendus)
+GET {{base}}/livreurs
+Accept: application/json
+
+###
+
+### GET — Consulter Jean Dupont
+GET {{base}}/livreurs/{{id_jean}}
+Accept: application/json
+
+###
+
+### GET — Consulter Sophie Martin
+GET {{base}}/livreurs/{{id_sophie}}
+Accept: application/json
+
+###
+
+### GET — 404 : livreur inexistant
+GET {{base}}/livreurs/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+### POST — Créer un 4e livreur
+# Le mot de passe généré apparaît dans Mailpit → http://localhost:8026
+POST {{base}}/livreurs
+Content-Type: application/json
+
+{
+  "nom": "Leroy",
+  "prenom": "Emma",
+  "email": "emma.leroy@citylunch.fr"
+}
+
+###
+
+### POST — 409 : email déjà utilisé
+POST {{base}}/livreurs
+Content-Type: application/json
+
+{
+  "nom": "Dupont",
+  "prenom": "Jean",
+  "email": "jean@citylunch.fr"
+}
+
+###
+
+### POST — 400 : email invalide
+POST {{base}}/livreurs
+Content-Type: application/json
+
+{
+  "nom": "Test",
+  "prenom": "User",
+  "email": "pas-un-email"
+}
+
+###
+
+### PUT — Mettre Lucas en indisponible + position GPS
+PUT {{base}}/livreurs/{{id_lucas}}
+Content-Type: application/json
+
+{
+  "disponible": false,
+  "position_lat": 48.8566,
+  "position_lng": 2.3522
+}
+
+###
+
+### PUT — Remettre Jean en disponible
+PUT {{base}}/livreurs/{{id_jean}}
+Content-Type: application/json
+
+{
+  "disponible": true
+}
+
+###
+
+### DELETE — Supprimer Sophie (cascade : supprime aussi son sac et sac_items)
+# ⚠ Déclenche une cascade SQL — sac de Sophie supprimé automatiquement
+DELETE {{base}}/livreurs/{{id_sophie}}
+
+###
+
+
+### ─────────────────────────────────────────────
+### AUTHENTIFICATION
+### ─────────────────────────────────────────────
+
+### POST — Login Jean Dupont → token JWT
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "jean@citylunch.fr",
+  "mot_de_passe": "o7FtEgWofXK2"
+}
+
+###
+
+### POST — Login Sophie Martin
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "sophie.martin@citylunch.fr",
+  "mot_de_passe": "fPN9jguBFle4"
+}
+
+###
+
+### POST — Login Lucas Bernard
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "lucas.bernard@citylunch.fr",
+  "mot_de_passe": "2aiKJqtbkbEt"
+}
+
+###
+
+### POST — 401 : mauvais mot de passe
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "jean@citylunch.fr",
+  "mot_de_passe": "mauvais_mdp"
+}
+
+###
+
+### POST — 401 : email inconnu
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "inconnu@citylunch.fr",
+  "mot_de_passe": "nimporte"
+}
+
+###
+
+
+### ─────────────────────────────────────────────
+### SAC — Jean Dupont (poulet x3 + tarte x2 + mousse x1)
+### ─────────────────────────────────────────────
+
+### GET — Contenu du sac de Jean
+GET {{base}}/sac
+Authorization: Bearer {{token_jean}}
+Accept: application/json
+
+###
+
+### POST — Jean ajoute 2 poulets supplémentaires (incrémente → total 5)
+POST {{base}}/sac/produits
+Authorization: Bearer {{token_jean}}
+Content-Type: application/json
+
+{
+  "produit_id": "{{id_poulet}}",
+  "quantite": 2
+}
+
+###
+
+### POST — Jean ajoute du Saumon à son sac
+POST {{base}}/sac/produits
+Authorization: Bearer {{token_jean}}
+Content-Type: application/json
+
+{
+  "produit_id": "{{id_saumon}}",
+  "quantite": 1
+}
+
+###
+
+### POST — 400 : quantité nulle
+POST {{base}}/sac/produits
+Authorization: Bearer {{token_jean}}
+Content-Type: application/json
+
+{
+  "produit_id": "{{id_poulet}}",
+  "quantite": 0
+}
+
+###
+
+### DELETE — Jean retire la Tarte de son sac
+DELETE {{base}}/sac/produits/{{id_tarte}}
+Authorization: Bearer {{token_jean}}
+
+###
+
+### GET — Vérifier le sac de Jean après modifications
+GET {{base}}/sac
+Authorization: Bearer {{token_jean}}
+Accept: application/json
+
+###
+
+
+### ─────────────────────────────────────────────
+### SAC — Sophie Martin (saumon x2 + mousse x4)
+### ─────────────────────────────────────────────
+
+### GET — Contenu du sac de Sophie
+GET {{base}}/sac
+Authorization: Bearer {{token_sophie}}
+Accept: application/json
+
+###
+
+### DELETE — Sophie retire le Saumon de son sac
+DELETE {{base}}/sac/produits/{{id_saumon}}
+Authorization: Bearer {{token_sophie}}
+
+###
+
+### GET — Sac de Sophie après retrait
+GET {{base}}/sac
+Authorization: Bearer {{token_sophie}}
+Accept: application/json
+
+###
+
+
+### ─────────────────────────────────────────────
+### SAC — Lucas Bernard (risotto x5 + tarte x3 + poulet x2)
+### ─────────────────────────────────────────────
+
+### GET — Contenu du sac de Lucas
+GET {{base}}/sac
+Authorization: Bearer {{token_lucas}}
+Accept: application/json
+
+###
+
+### POST — Lucas ajoute de la Mousse au chocolat
+POST {{base}}/sac/produits
+Authorization: Bearer {{token_lucas}}
+Content-Type: application/json
+
+{
+  "produit_id": "{{id_mousse}}",
+  "quantite": 3
+}
+
+###
+
+### DELETE — Lucas retire le Risotto (retour fin de service)
+DELETE {{base}}/sac/produits/{{id_risotto}}
+Authorization: Bearer {{token_lucas}}
+
+###
+
+### GET — Sac final de Lucas
+GET {{base}}/sac
+Authorization: Bearer {{token_lucas}}
+Accept: application/json
+
+###
+
+
+### ─────────────────────────────────────────────
+### CAS D'ERREUR — Sac
+### ─────────────────────────────────────────────
+
+### GET — 401 : accès sans token
+GET {{base}}/sac
+Accept: application/json
+
+###
+
+### POST — 401 : token invalide
+POST {{base}}/sac/produits
+Authorization: Bearer token.invalide.xxx
+Content-Type: application/json
+
+{
+  "produit_id": "{{id_poulet}}",
+  "quantite": 1
+}
+
+###
+
+### DELETE — 404 : produit absent du sac de Jean (Risotto jamais ajouté)
+DELETE {{base}}/sac/produits/{{id_risotto}}
+Authorization: Bearer {{token_jean}}
+
+###

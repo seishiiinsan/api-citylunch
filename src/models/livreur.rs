@@ -37,23 +37,25 @@ pub struct LivreurResponse {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateLivreurDto {
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, max = 255))]
     pub nom: String,
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, max = 255))]
     pub prenom: String,
-    #[validate(email)]
+    #[validate(email, length(max = 255))]
     pub email: String,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateLivreurDto {
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, max = 255))]
     pub nom: Option<String>,
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, max = 255))]
     pub prenom: Option<String>,
-    #[validate(email)]
+    #[validate(email, length(max = 255))]
     pub email: Option<String>,
     pub disponible: Option<bool>,
+    #[validate(range(min = -90.0, max = 90.0))]
     pub position_lat: Option<f64>,
+    #[validate(range(min = -180.0, max = 180.0))]
     pub position_lng: Option<f64>,
 }

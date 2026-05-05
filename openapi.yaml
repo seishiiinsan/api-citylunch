@@ -1,0 +1,754 @@
+openapi: 3.0.3
+info:
+  title: CityLunch API
+  description: |
+    API REST pour la gestion des livreurs, des produits et des sacs CityLunch.
+
+    ## Authentification
+    Les routes protégées utilisent un token JWT Bearer.
+    Obtenir un token via `POST /api/v1/auth/login`, puis passer le header :
+    `Authorization: Bearer <token>`
+  version: 1.0.0
+  contact:
+    url: https://github.com/seishiiinsan/api-citylunch
+
+servers:
+  - url: http://localhost:3000
+    description: Développement local
+
+tags:
+  - name: health
+    description: Santé de l'API
+  - name: produits
+    description: Gestion du catalogue de produits
+  - name: livreurs
+    description: Gestion des livreurs
+  - name: auth
+    description: Authentification JWT
+  - name: sac
+    description: Gestion du sac du livreur connecté (JWT requis)
+
+# ─── Composants réutilisables ────────────────────────────────────────────────
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    Produit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: d6d74be8-7416-4c36-81a6-165cbd03091a
+        nom:
+          type: string
+          example: Poulet rôti aux herbes
+        description:
+          type: string
+          nullable: true
+          example: Poulet fermier Label Rouge, thym, romarin
+        prix:
+          type: string
+          description: Décimal avec 2 décimales
+          example: "12.50"
+        type_produit:
+          $ref: '#/components/schemas/TypeProduit'
+        disponible:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProduitDto:
+      type: object
+      required: [nom, prix, type_produit]
+      properties:
+        nom:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Poulet rôti aux herbes
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Poulet fermier Label Rouge, thym, romarin
+        prix:
+          type: number
+          format: float
+          minimum: 0
+          example: 12.50
+        type_produit:
+          $ref: '#/components/schemas/TypeProduit'
+        disponible:
+          type: boolean
+          default: true
+
+    UpdateProduitDto:
+      type: object
+      properties:
+        nom:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        prix:
+          type: number
+          format: float
+          minimum: 0
+        type_produit:
+          $ref: '#/components/schemas/TypeProduit'
+        disponible:
+          type: boolean
+
+    TypeProduit:
+      type: string
+      enum: [plat, dessert]
+      example: plat
+
+    Livreur:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nom:
+          type: string
+          example: Dupont
+        prenom:
+          type: string
+          example: Jean
+        email:
+          type: string
+          format: email
+          example: jean.dupont@citylunch.fr
+        disponible:
+          type: boolean
+          example: true
+        position_lat:
+          type: number
+          format: double
+          nullable: true
+          minimum: -90
+          maximum: 90
+          example: 48.8566
+        position_lng:
+          type: number
+          format: double
+          nullable: true
+          minimum: -180
+          maximum: 180
+          example: 2.3522
+        position_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Horodatage de la dernière mise à jour de position
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateLivreurDto:
+      type: object
+      required: [nom, prenom, email]
+      properties:
+        nom:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Dupont
+        prenom:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Jean
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: jean.dupont@citylunch.fr
+
+    UpdateLivreurDto:
+      type: object
+      properties:
+        nom:
+          type: string
+          minLength: 1
+          maxLength: 255
+        prenom:
+          type: string
+          minLength: 1
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        disponible:
+          type: boolean
+        position_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        position_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+
+    LoginDto:
+      type: object
+      required: [email, mot_de_passe]
+      properties:
+        email:
+          type: string
+          format: email
+          example: jean.dupont@citylunch.fr
+        mot_de_passe:
+          type: string
+          example: monMotDePasse
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Token JWT valable 24h
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+
+    SacItemResponse:
+      type: object
+      properties:
+        produit_id:
+          type: string
+          format: uuid
+        nom:
+          type: string
+          example: Poulet rôti aux herbes
+        type_produit:
+          type: string
+          example: plat
+        quantite:
+          type: integer
+          minimum: 1
+          example: 3
+        prix_unitaire:
+          type: string
+          example: "12.50"
+
+    SacResponse:
+      type: object
+      properties:
+        sac_id:
+          type: string
+          format: uuid
+        livreur_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SacItemResponse'
+        total_items:
+          type: integer
+          description: Somme de toutes les quantités
+
+    AddProduitDto:
+      type: object
+      required: [produit_id, quantite]
+      properties:
+        produit_id:
+          type: string
+          format: uuid
+          example: d6d74be8-7416-4c36-81a6-165cbd03091a
+        quantite:
+          type: integer
+          minimum: 1
+          example: 3
+
+    RetraitProduitDto:
+      type: object
+      required: [quantite]
+      properties:
+        quantite:
+          type: integer
+          minimum: 1
+          description: Quantité à retirer — ne peut pas dépasser ce qui est dans le sac
+          example: 2
+
+    MouvementsResponse:
+      type: object
+      properties:
+        mouvements:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              produit_id:
+                type: string
+                format: uuid
+              produit_nom:
+                type: string
+              quantite:
+                type: integer
+              type_mouvement:
+                type: string
+                enum: [chargement, retrait, retour_fin_service]
+              created_at:
+                type: string
+                format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Resource not found
+
+# ─── Paths ───────────────────────────────────────────────────────────────────
+
+paths:
+
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      responses:
+        '200':
+          description: API opérationnelle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ── Produits ──────────────────────────────────────────────────────────────
+
+  /api/v1/produits:
+    get:
+      tags: [produits]
+      summary: Lister tous les produits
+      responses:
+        '200':
+          description: Liste des produits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Produit'
+
+    post:
+      tags: [produits]
+      summary: Créer un produit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProduitDto'
+      responses:
+        '201':
+          description: Produit créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produit'
+        '400':
+          description: Données invalides (nom vide, prix négatif, type inconnu)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/produits/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [produits]
+      summary: Consulter un produit
+      responses:
+        '200':
+          description: Produit trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produit'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [produits]
+      summary: Modifier un produit (champs optionnels)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProduitDto'
+      responses:
+        '200':
+          description: Produit mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [produits]
+      summary: Supprimer un produit
+      description: Échoue avec 409 si le produit est présent dans un sac actif.
+      responses:
+        '204':
+          description: Produit supprimé
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Produit présent dans un sac — suppression interdite
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Livreurs ──────────────────────────────────────────────────────────────
+
+  /api/v1/livreurs:
+    get:
+      tags: [livreurs]
+      summary: Lister tous les livreurs
+      responses:
+        '200':
+          description: Liste des livreurs (mot de passe non inclus)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Livreur'
+
+    post:
+      tags: [livreurs]
+      summary: Créer un livreur
+      description: |
+        Génère un mot de passe aléatoire sécurisé, le hache en base et l'envoie
+        par email au livreur. Crée automatiquement un sac vide pour ce livreur.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLivreurDto'
+      responses:
+        '201':
+          description: Livreur créé (mot de passe non inclus dans la réponse)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livreur'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email déjà utilisé par un autre livreur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/livreurs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [livreurs]
+      summary: Consulter un livreur
+      responses:
+        '200':
+          description: Livreur trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livreur'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [livreurs]
+      summary: Modifier un livreur
+      description: |
+        Met à jour les champs fournis uniquement.
+        Si `position_lat` ou `position_lng` est fourni, `position_at` est mis à jour automatiquement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLivreurDto'
+      responses:
+        '200':
+          description: Livreur mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livreur'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Email déjà utilisé
+
+    delete:
+      tags: [livreurs]
+      summary: Supprimer un livreur
+      description: Supprime également le sac et les sac_items associés (cascade SQL).
+      responses:
+        '204':
+          description: Livreur supprimé
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/livreurs/{id}/sac:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [livreurs]
+      summary: Voir le sac d'un livreur (vue gérant)
+      description: Accès public — permet au gérant de consulter le sac de n'importe quel livreur.
+      responses:
+        '200':
+          description: Contenu du sac
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SacResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/livreurs/{id}/mouvements:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [livreurs]
+      summary: Historique des mouvements de stock d'un livreur
+      responses:
+        '200':
+          description: Mouvements triés du plus récent au plus ancien
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MouvementsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Connexion livreur — retourne un token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDto'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Email inconnu ou mot de passe incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Sac (JWT) ─────────────────────────────────────────────────────────────
+
+  /api/v1/sac:
+    get:
+      tags: [sac]
+      summary: Voir son propre sac
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Contenu du sac du livreur connecté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SacResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/sac/produits:
+    post:
+      tags: [sac]
+      summary: Ajouter un produit au sac
+      description: |
+        Si le produit est déjà dans le sac, sa quantité est incrémentée.
+        Le produit doit exister et avoir `disponible = true`.
+        Enregistre un mouvement `chargement` dans `mouvements_stock`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProduitDto'
+      responses:
+        '201':
+          description: Produit ajouté au sac
+        '400':
+          description: Produit indisponible ou quantité invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Produit ou sac introuvable
+
+  /api/v1/sac/produits/{produit_id}:
+    parameters:
+      - name: produit_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [sac]
+      summary: Retirer une quantité d'un produit du sac
+      description: |
+        Retrait partiel ou total selon la quantité fournie.
+        Erreur 400 si la quantité dépasse ce qui est dans le sac.
+        Enregistre un mouvement `retrait` dans `mouvements_stock`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetraitProduitDto'
+      responses:
+        '204':
+          description: Produit retiré du sac
+        '400':
+          description: Quantité de retrait supérieure au stock dans le sac
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Produit absent du sac
+
+  /api/v1/sac/fin-service:
+    post:
+      tags: [sac]
+      summary: Retourner les produits en fin de service
+      description: |
+        Vide le sac du livreur et enregistre un mouvement `retour_fin_service`
+        pour chaque produit retourné.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Fin de service enregistrée
+          content:
+            application/json:
+              example:
+                message: Fin de service enregistrée
+                produits_retournes: 7
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Réponses réutilisables ────────────────────────────────────────────────
+
+  responses: {}
+
+components:
+  responses:
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Resource not found
+
+    BadRequest:
+      description: Données de la requête invalides
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Token JWT absent, invalide ou expiré
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Unauthorized

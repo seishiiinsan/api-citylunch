@@ -4,6 +4,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod auth;
 mod config;
 mod db;
+mod domain;
 mod email;
 mod errors;
 mod handlers;

@@ -71,8 +71,9 @@ impl From<ProduitRow> for Produit {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateProduitDto {
-    #[validate(length(min = 1, message = "Le nom ne peut pas être vide"))]
+    #[validate(length(min = 1, max = 255, message = "Le nom doit faire entre 1 et 255 caractères"))]
     pub nom: String,
+    #[validate(length(max = 2000, message = "La description ne peut pas dépasser 2000 caractères"))]
     pub description: Option<String>,
     pub prix: f64,
     pub type_produit: TypeProduit,
@@ -81,8 +82,9 @@ pub struct CreateProduitDto {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateProduitDto {
-    #[validate(length(min = 1, message = "Le nom ne peut pas être vide"))]
+    #[validate(length(min = 1, max = 255, message = "Le nom doit faire entre 1 et 255 caractères"))]
     pub nom: Option<String>,
+    #[validate(length(max = 2000, message = "La description ne peut pas dépasser 2000 caractères"))]
     pub description: Option<String>,
     pub prix: Option<f64>,
     pub type_produit: Option<TypeProduit>,

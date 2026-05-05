@@ -37,10 +37,16 @@ pub fn generate_token(
 }
 
 pub fn validate_token(token: &str, secret: &str) -> Result<TokenData<Claims>, AppError> {
+    let mut validation = Validation::default();
+    // Exiger explicitement les claims critiques
+    validation.set_required_spec_claims(&["exp", "sub", "iat"]);
+    // Vérifier l'expiration (déjà vrai par défaut, rendu explicite)
+    validation.validate_exp = true;
+
     decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default(),
+        &validation,
     )
     .map_err(|_| AppError::Unauthorized)
 }

@@ -16,9 +16,10 @@ use crate::{
 };
 
 fn generate_password() -> String {
-    rand::thread_rng()
+    // OsRng : source cryptographiquement sûre (CSPRNG)
+    rand::rngs::OsRng
         .sample_iter(&rand::distributions::Alphanumeric)
-        .take(12)
+        .take(16) // 16 chars → ~95 bits d'entropie (alphanumérique)
         .map(char::from)
         .collect()
 }
@@ -164,12 +165,17 @@ pub async fn update_livreur(
     let prenom = dto.prenom.unwrap_or(existing.prenom);
     let email = dto.email.unwrap_or(existing.email);
     let disponible = dto.disponible.unwrap_or(existing.disponible);
+    let position_changed = dto.position_lat.is_some() || dto.position_lng.is_some();
     let position_lat = dto.position_lat.or(existing.position_lat);
     let position_lng = dto.position_lng.or(existing.position_lng);
 
     let row = sqlx::query(
-        "UPDATE livreurs SET nom = $1, prenom = $2, email = $3, disponible = $4, position_lat = $5, position_lng = $6, updated_at = NOW()
-         WHERE id = $7
+        "UPDATE livreurs
+         SET nom = $1, prenom = $2, email = $3, disponible = $4,
+             position_lat = $5, position_lng = $6,
+             position_at = CASE WHEN $7 THEN NOW() ELSE position_at END,
+             updated_at = NOW()
+         WHERE id = $8
          RETURNING id, nom, prenom, email, disponible, position_lat, position_lng, position_at, created_at, updated_at"
     )
     .bind(nom)
@@ -178,6 +184,7 @@ pub async fn update_livreur(
     .bind(disponible)
     .bind(position_lat)
     .bind(position_lng)
+    .bind(position_changed)
     .bind(id)
     .fetch_one(&state.pool)
     .await?;

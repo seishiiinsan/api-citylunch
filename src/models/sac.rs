@@ -36,3 +36,9 @@ pub struct AddProduitDto {
     #[validate(range(min = 1))]
     pub quantite: i32,
 }
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct RetraitProduitDto {
+    #[validate(range(min = 1))]
+    pub quantite: i32,
+}
